@@ -1,8 +1,8 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 // Initialize the API client
-// Note: In a real production app, this key should be proxied through a backend.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const MODEL_NAME = 'gemini-2.5-flash';
 
@@ -25,14 +25,7 @@ export const generateStudyAid = async (
 
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: MODEL_NAME,
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: `[Context Material]:\n${contextText}\n\n[User Query]: ${userQuery}` }
-          ]
-        }
-      ],
+      contents: `[Context Material]:\n${contextText}\n\n[User Query]: ${userQuery}`,
       config: {
         systemInstruction: systemInstruction,
         temperature: 0.7,
@@ -51,14 +44,7 @@ export const analyzeWeakness = async (topics: string[]): Promise<string> => {
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: MODEL_NAME,
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: `다음 학습 주제들을 바탕으로 약점 분석을 해주세요: ${topics.join(', ')}. 이 주제들에서 학생들이 주로 어려워하는 부분과 추천 학습 계획을 한국어로 제안해 주세요.` }
-          ]
-        }
-      ]
+      contents: `다음 학습 주제들을 바탕으로 약점 분석을 해주세요: ${topics.join(', ')}. 이 주제들에서 학생들이 주로 어려워하는 부분과 추천 학습 계획을 한국어로 제안해 주세요.`
     });
     return response.text || "분석 결과를 가져올 수 없습니다.";
   } catch (error) {
