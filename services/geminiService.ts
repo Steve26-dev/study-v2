@@ -1,30 +1,16 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
+// Initialize the API client
+// The API key must be obtained exclusively from the environment variable process.env.API_KEY.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
 const MODEL_NAME = 'gemini-2.5-flash';
-const apiKey = import.meta.env.VITE_API_KEY;
-
-let ai: GoogleGenAI | null = null;
-
-const getClient = () => {
-  if (ai) return ai;
-  if (!apiKey) {
-    console.warn("Gemini API key is not set. Set VITE_API_KEY to enable AI features.");
-    return null;
-  }
-  ai = new GoogleGenAI({ apiKey });
-  return ai;
-};
 
 export const generateStudyAid = async (
   contextText: string,
   userQuery: string
 ): Promise<string> => {
   try {
-    const client = getClient();
-    if (!client) {
-      return "현재 데모 모드입니다. .env에 VITE_API_KEY를 설정하면 Gemini 응답을 받을 수 있습니다.";
-    }
-
     const systemInstruction = `
       당신은 고도로 훈련된 학습 조교 'Study OS AI'입니다.
       당신의 목표는 학생이 제공된 학습 자료를 완벽하게 이해하도록 돕는 것입니다.
@@ -35,8 +21,9 @@ export const generateStudyAid = async (
       3. 사용자가 요약을 요청하면, 구조화된 개조식(bullet-point)으로 정리하십시오.
       4. 사용자가 퀴즈를 요청하면, 문맥에 기반한 객관식 문제 3개를 생성하십시오.
       5. 친절하고 격려하는 어조를 유지하십시오.
-    `; 
-    const response: GenerateContentResponse = await client.models.generateContent({
+    `;
+
+    const response: GenerateContentResponse = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: `[Context Material]:\n${contextText}\n\n[User Query]: ${userQuery}`,
       config: {
@@ -55,12 +42,7 @@ export const generateStudyAid = async (
 
 export const analyzeWeakness = async (topics: string[]): Promise<string> => {
   try {
-    const client = getClient();
-    if (!client) {
-      return "현재 데모 모드입니다. .env에 VITE_API_KEY를 설정하면 Gemini 응답을 받을 수 있습니다.";
-    }
-
-    const response: GenerateContentResponse = await client.models.generateContent({
+    const response: GenerateContentResponse = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: `다음 학습 주제들을 바탕으로 약점 분석을 해주세요: ${topics.join(', ')}. 이 주제들에서 학생들이 주로 어려워하는 부분과 추천 학습 계획을 한국어로 제안해 주세요.`
     });

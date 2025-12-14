@@ -13,6 +13,7 @@ export interface Topic {
   lastStudied: string;
   masteryLevel: number; // 0-100
   tags: string[];
+  fileUrl?: string; // Optional: for uploaded PDF blob URLs
 }
 
 export interface SRItem {

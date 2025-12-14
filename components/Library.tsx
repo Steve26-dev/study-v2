@@ -1,31 +1,60 @@
-import React, { useState } from 'react';
-import { Search, Filter, BookOpen, Clock, ChevronRight } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Search, Filter, BookOpen, Clock, ChevronRight, Upload, FileText } from 'lucide-react';
 import { Topic } from '../types';
 
 interface LibraryProps {
+  topics: Topic[];
   onSelectTopic: (id: string) => void;
+  onAddTopic: (topic: Topic) => void;
 }
 
-const mockTopics: Topic[] = [
-  { id: 't1', title: '심박출량(Cardiac Output)의 기전', subject: '생리학', professor: '김철수 교수', lastStudied: '2일 전', masteryLevel: 75, tags: ['심장', '순환기'] },
-  { id: 't2', title: '뇌신경(Cranial Nerves) V-VII', subject: '해부학', professor: '이영희 교수', lastStudied: '5일 전', masteryLevel: 40, tags: ['신경', '두경부'] },
-  { id: 't3', title: '항생제 분류 및 작용기전', subject: '약리학', professor: '박준호 교수', lastStudied: '1주 전', masteryLevel: 90, tags: ['약물', '감염'] },
-  { id: 't4', title: '신장 사구체 여과율(GFR)', subject: '생리학', professor: '김철수 교수', lastStudied: '학습 안 함', masteryLevel: 0, tags: ['신장'] },
-  { id: 't5', title: '폐암의 종류와 병리', subject: '병리학', professor: '최민수 교수', lastStudied: '3일 전', masteryLevel: 60, tags: ['종양', '호흡기'] },
-];
-
-const Library: React.FC<LibraryProps> = ({ onSelectTopic }) => {
+const Library: React.FC<LibraryProps> = ({ topics, onSelectTopic, onAddTopic }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState<string>('전체');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const subjects = ['전체', ...Array.from(new Set(mockTopics.map(t => t.subject)))];
+  const subjects = ['전체', ...Array.from(new Set(topics.map(t => t.subject)))];
 
-  const filteredTopics = mockTopics.filter(t => {
+  const filteredTopics = topics.filter(t => {
     const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           t.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesSubject = selectedSubject === '전체' || t.subject === selectedSubject;
     return matchesSearch && matchesSubject;
   });
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Create a local URL for the file to display in iframe
+    const fileUrl = URL.createObjectURL(file);
+    
+    // Create a new topic based on the file
+    const newTopic: Topic = {
+      id: Date.now().toString(),
+      title: file.name.replace('.pdf', ''), // Use filename as title
+      subject: '개인 학습', // Default subject
+      professor: '업로드 자료',
+      lastStudied: '방금 전',
+      masteryLevel: 0,
+      tags: ['PDF', '개인자료'],
+      fileUrl: fileUrl
+    };
+
+    onAddTopic(newTopic);
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    // Optional: Auto navigate to the new topic? 
+    // For now, just showing it in the list is enough.
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto h-full flex flex-col">
@@ -35,7 +64,22 @@ const Library: React.FC<LibraryProps> = ({ onSelectTopic }) => {
           <p className="text-slate-500 mt-1">학습 자료와 주제 카드를 관리하세요.</p>
         </div>
         
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="flex gap-2 w-full md:w-auto items-center">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            accept="application/pdf" 
+            className="hidden" 
+          />
+          <button 
+            onClick={handleUploadClick}
+            className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2 font-medium transition-colors whitespace-nowrap"
+          >
+            <Upload size={18} />
+            PDF 자료 업로드
+          </button>
+
           <div className="relative flex-1 md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
@@ -46,9 +90,6 @@ const Library: React.FC<LibraryProps> = ({ onSelectTopic }) => {
               className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
-          <button className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
-            <Filter size={20} />
-          </button>
         </div>
       </div>
 
@@ -79,7 +120,9 @@ const Library: React.FC<LibraryProps> = ({ onSelectTopic }) => {
           >
             <div>
               <div className="flex justify-between items-start mb-2">
-                <span className="text-xs font-bold tracking-wider text-brand-600 uppercase bg-brand-50 px-2 py-1 rounded-md">{topic.subject}</span>
+                <span className={`text-xs font-bold tracking-wider uppercase px-2 py-1 rounded-md ${topic.fileUrl ? 'bg-indigo-50 text-indigo-600' : 'bg-brand-50 text-brand-600'}`}>
+                  {topic.subject}
+                </span>
                 <span className={`text-xs px-2 py-1 rounded-full ${
                   topic.masteryLevel > 70 ? 'bg-emerald-100 text-emerald-700' :
                   topic.masteryLevel > 40 ? 'bg-amber-100 text-amber-700' :
@@ -88,7 +131,10 @@ const Library: React.FC<LibraryProps> = ({ onSelectTopic }) => {
                   성취도 {topic.masteryLevel}%
                 </span>
               </div>
-              <h3 className="font-bold text-slate-900 text-lg leading-tight mb-2 group-hover:text-brand-600 transition-colors">{topic.title}</h3>
+              <h3 className="font-bold text-slate-900 text-lg leading-tight mb-2 group-hover:text-brand-600 transition-colors line-clamp-2">
+                {topic.fileUrl && <FileText className="inline-block mr-1 text-slate-400" size={16} />}
+                {topic.title}
+              </h3>
               <p className="text-sm text-slate-500">{topic.professor}</p>
             </div>
 

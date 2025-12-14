@@ -1,9 +1,19 @@
 import React, { useState } from 'react';
-import { HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { LayoutDashboard, Library, Settings, BookOpen, Menu, X } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import LibraryView from './components/Library';
 import TopicStudy from './components/TopicStudy';
+import { Topic } from './types';
+
+// Initial Mock Data moved here
+const INITIAL_TOPICS: Topic[] = [
+  { id: 't1', title: '심박출량(Cardiac Output)의 기전', subject: '생리학', professor: '김철수 교수', lastStudied: '2일 전', masteryLevel: 75, tags: ['심장', '순환기'] },
+  { id: 't2', title: '뇌신경(Cranial Nerves) V-VII', subject: '해부학', professor: '이영희 교수', lastStudied: '5일 전', masteryLevel: 40, tags: ['신경', '두경부'] },
+  { id: 't3', title: '항생제 분류 및 작용기전', subject: '약리학', professor: '박준호 교수', lastStudied: '1주 전', masteryLevel: 90, tags: ['약물', '감염'] },
+  { id: 't4', title: '신장 사구체 여과율(GFR)', subject: '생리학', professor: '김철수 교수', lastStudied: '학습 안 함', masteryLevel: 0, tags: ['신장'] },
+  { id: 't5', title: '폐암의 종류와 병리', subject: '병리학', professor: '최민수 교수', lastStudied: '3일 전', masteryLevel: 60, tags: ['종양', '호흡기'] },
+];
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
@@ -98,13 +108,25 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const App: React.FC = () => {
+  const [topics, setTopics] = useState<Topic[]>(INITIAL_TOPICS);
+
+  const handleAddTopic = (newTopic: Topic) => {
+    setTopics(prev => [newTopic, ...prev]);
+  };
+
   return (
     <HashRouter>
       <Layout>
         <Routes>
           <Route path="/" element={<DashboardWrapper />} />
-          <Route path="/library" element={<LibraryWrapper />} />
-          <Route path="/topic/:id" element={<TopicStudyWrapper />} />
+          <Route 
+            path="/library" 
+            element={<LibraryWrapper topics={topics} onAddTopic={handleAddTopic} />} 
+          />
+          <Route 
+            path="/topic/:id" 
+            element={<TopicStudyWrapper topics={topics} />} 
+          />
           <Route path="*" element={<DashboardWrapper />} />
         </Routes>
       </Layout>
@@ -112,21 +134,34 @@ const App: React.FC = () => {
   );
 };
 
-// Wrappers to handle navigation logic
+// Wrappers
 const DashboardWrapper = () => {
   const navigate = useNavigate();
   return <Dashboard onNavigate={navigate} />;
 };
 
-const LibraryWrapper = () => {
+const LibraryWrapper: React.FC<{ topics: Topic[], onAddTopic: (t: Topic) => void }> = ({ topics, onAddTopic }) => {
   const navigate = useNavigate();
-  return <LibraryView onSelectTopic={(id) => navigate(`/topic/${id}`)} />;
+  return (
+    <LibraryView 
+      topics={topics} 
+      onAddTopic={onAddTopic}
+      onSelectTopic={(id) => navigate(`/topic/${id}`)} 
+    />
+  );
 };
 
-const TopicStudyWrapper = () => {
+const TopicStudyWrapper: React.FC<{ topics: Topic[] }> = ({ topics }) => {
   const navigate = useNavigate();
-  // In a real app, use useParams to get ID
-  return <TopicStudy topicId="demo" onBack={() => navigate('/library')} />;
+  const { id } = useParams();
+  
+  const topic = topics.find(t => t.id === id);
+
+  if (!topic) {
+    return <div className="p-8">주제를 찾을 수 없습니다. <button onClick={() => navigate('/library')} className="text-brand-600 underline">돌아가기</button></div>;
+  }
+
+  return <TopicStudy topic={topic} onBack={() => navigate('/library')} />;
 };
 
 export default App;

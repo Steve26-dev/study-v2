@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TabType, ChatMessage } from '../types';
+import { TabType, ChatMessage, Topic } from '../types';
 import { FileText, Monitor, Book, HelpCircle, Send, Maximize2, CheckCircle, XCircle, Search, Bot } from 'lucide-react';
 import { generateStudyAid } from '../services/geminiService';
 
 interface TopicStudyProps {
-  topicId: string;
+  topic: Topic;
   onBack: () => void;
 }
 
-const TopicStudy: React.FC<TopicStudyProps> = ({ topicId, onBack }) => {
-  const [activeTab, setActiveTab] = useState<TabType>(TabType.SUMMARY);
+const TopicStudy: React.FC<TopicStudyProps> = ({ topic, onBack }) => {
+  const [activeTab, setActiveTab] = useState<TabType>(topic.fileUrl ? TabType.DETAIL : TabType.SUMMARY);
   const [showRightPanel, setShowRightPanel] = useState(true);
   
   // AI Chat State
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: '0', role: 'model', text: '안녕하세요! 이 주제에 대해 도와드릴 준비가 되었습니다. 요약이나 퀴즈를 요청해 보세요.', timestamp: new Date() }
+    { id: '0', role: 'model', text: `안녕하세요! '${topic.title}'에 대해 도와드릴 준비가 되었습니다. 요약이나 퀴즈를 요청해 보세요.`, timestamp: new Date() }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -37,11 +37,12 @@ const TopicStudy: React.FC<TopicStudyProps> = ({ topicId, onBack }) => {
     setIsTyping(true);
 
     // Simulate getting context based on active tab
+    // In a real app, if fileUrl exists, we would send the PDF content or use RAG.
     const contextMap = {
-      [TabType.SUMMARY]: "심박출량(Cardiac Output) 요약 내용: CO = SV x HR...",
-      [TabType.DETAIL]: "Guyton & Hall 생리학 교과서 상세 내용 발췌: 심장 조절 기전, Frank-Starling 법칙...",
-      [TabType.SLIDES]: "강의 슬라이드 내용: Wiggers Diagram 및 심주기 설명...",
-      [TabType.QUESTIONS]: "기출 문제 문맥: 전부하(Preload)와 후부하(Afterload) 관련 문제...",
+      [TabType.SUMMARY]: `${topic.title} 요약 내용... (AI가 PDF 내용을 분석하여 요약합니다)`,
+      [TabType.DETAIL]: topic.fileUrl ? "사용자가 PDF 원문을 보고 있습니다." : "Guyton & Hall 생리학 교과서 상세 내용 발췌...",
+      [TabType.SLIDES]: "강의 슬라이드 내용...",
+      [TabType.QUESTIONS]: "기출 문제 문맥...",
     };
 
     const responseText = await generateStudyAid(contextMap[activeTab], userMsg.text);
@@ -55,20 +56,42 @@ const TopicStudy: React.FC<TopicStudyProps> = ({ topicId, onBack }) => {
     switch (activeTab) {
       case TabType.SUMMARY:
         return (
-          <div className="prose max-w-none p-8">
-            <h2 className="text-2xl font-bold mb-4">핵심 요약 (급분바)</h2>
+          <div className="prose max-w-none p-8 overflow-y-auto h-full">
+            <h2 className="text-2xl font-bold mb-4">핵심 요약 (AI Generated)</h2>
             <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-6">
               <p className="font-bold text-amber-800">Key Concept</p>
-              <p className="text-amber-700">심박출량(CO) = 1회 박출량(SV) × 심박수(HR). 이는 조직으로의 산소 전달을 결정하는 가장 중요한 지표이다.</p>
+              <p className="text-amber-700">이 주제의 핵심 개념과 주요 내용을 여기에 요약하여 보여줍니다.</p>
             </div>
-            <ul className="list-disc pl-5 space-y-2 text-slate-700">
-              <li><strong>전부하(Preload):</strong> 확장기 말 용적(EDV), 심실 근육을 늘리는 힘.</li>
-              <li><strong>후부하(Afterload):</strong> 심실이 수축할 때 이겨내야 하는 저항 (전신혈관저항 SVR).</li>
-              <li><strong>수축력(Contractility):</strong> 심근 자체의 수축 능력 (근육 길이와 무관).</li>
-            </ul>
+            
+            {topic.fileUrl ? (
+              <div className="text-slate-600 space-y-4">
+                 <p>업로드된 PDF 문서를 바탕으로 AI가 생성한 요약입니다.</p>
+                 <ul className="list-disc pl-5 space-y-2">
+                    <li>PDF의 주요 챕터와 섹션이 여기에 나열됩니다.</li>
+                    <li>중요한 정의와 공식이 하이라이트 됩니다.</li>
+                 </ul>
+              </div>
+            ) : (
+              <ul className="list-disc pl-5 space-y-2 text-slate-700">
+                <li><strong>전부하(Preload):</strong> 확장기 말 용적(EDV), 심실 근육을 늘리는 힘.</li>
+                <li><strong>후부하(Afterload):</strong> 심실이 수축할 때 이겨내야 하는 저항 (전신혈관저항 SVR).</li>
+                <li><strong>수축력(Contractility):</strong> 심근 자체의 수축 능력 (근육 길이와 무관).</li>
+              </ul>
+            )}
           </div>
         );
       case TabType.DETAIL:
+        if (topic.fileUrl) {
+          return (
+            <div className="h-full flex flex-col bg-slate-100">
+               <iframe 
+                 src={topic.fileUrl} 
+                 className="w-full h-full border-none"
+                 title="PDF Viewer"
+               />
+            </div>
+          );
+        }
         return (
           <div className="h-full flex flex-col bg-slate-100">
              <div className="bg-white p-4 border-b border-slate-200 flex justify-between items-center">
@@ -96,7 +119,11 @@ const TopicStudy: React.FC<TopicStudyProps> = ({ topicId, onBack }) => {
          return (
           <div className="h-full bg-slate-900 flex flex-col items-center justify-center relative">
             <div className="w-3/4 aspect-video bg-white rounded shadow-2xl flex items-center justify-center overflow-hidden">
-               <img src="https://picsum.photos/800/600" alt="Lecture Slide" className="object-cover w-full h-full opacity-90" />
+               {topic.fileUrl ? (
+                 <div className="text-slate-500">PDF 모드에서는 슬라이드 뷰가 자동 생성됩니다.</div>
+               ) : (
+                 <img src="https://picsum.photos/800/600" alt="Lecture Slide" className="object-cover w-full h-full opacity-90" />
+               )}
             </div>
             <div className="absolute bottom-8 flex gap-4">
               <button className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full backdrop-blur-sm">이전</button>
@@ -138,14 +165,6 @@ const TopicStudy: React.FC<TopicStudyProps> = ({ topicId, onBack }) => {
                       </button>
                    </div>
                 </div>
-
-                <div className="mb-8 opacity-50">
-                   <p className="font-serif text-lg mb-4"><span className="font-bold mr-2">Q2.</span> 대동맥압 파형에서 중복맥박패임(dicrotic notch)이 의미하는 것은?</p>
-                   <div className="space-y-2 font-serif pl-6">
-                      <div className="flex gap-2"><span className="font-bold">(A)</span> 대동맥 판막 폐쇄</div>
-                      <div className="flex gap-2"><span className="font-bold">(B)</span> 승모판 개방</div>
-                   </div>
-                </div>
               </div>
             </div>
           </div>
@@ -161,21 +180,21 @@ const TopicStudy: React.FC<TopicStudyProps> = ({ topicId, onBack }) => {
         <header className="h-14 border-b border-slate-200 flex items-center justify-between px-4 bg-white z-10">
            <div className="flex items-center gap-4">
               <button onClick={onBack} className="text-slate-400 hover:text-slate-600">뒤로</button>
-              <h1 className="font-bold text-slate-800">심박출량(Cardiac Output)의 기전</h1>
+              <h1 className="font-bold text-slate-800 line-clamp-1">{topic.title}</h1>
            </div>
            
            {/* Tabs */}
-           <div className="flex bg-slate-100 p-1 rounded-lg">
+           <div className="flex bg-slate-100 p-1 rounded-lg shrink-0">
               {[
                 { id: TabType.SUMMARY, label: '요약', icon: FileText },
-                { id: TabType.DETAIL, label: '상세', icon: Book },
+                { id: TabType.DETAIL, label: topic.fileUrl ? '원문 (PDF)' : '상세', icon: Book },
                 { id: TabType.SLIDES, label: '슬라이드', icon: Monitor },
                 { id: TabType.QUESTIONS, label: '문족(기출)', icon: HelpCircle },
               ].map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                     activeTab === tab.id 
                       ? 'bg-white text-brand-600 shadow-sm' 
                       : 'text-slate-500 hover:text-slate-700'
@@ -203,7 +222,7 @@ const TopicStudy: React.FC<TopicStudyProps> = ({ topicId, onBack }) => {
 
       {/* Right: AI Assistant (Collapsible) */}
       {showRightPanel && (
-        <div className="w-96 border-l border-slate-200 bg-white flex flex-col shadow-xl z-20">
+        <div className="w-96 border-l border-slate-200 bg-white flex flex-col shadow-xl z-20 shrink-0">
           <div className="h-14 border-b border-slate-200 flex items-center px-4 justify-between bg-slate-50">
              <div className="flex items-center gap-2 text-brand-700 font-semibold">
                <Bot size={18} />
